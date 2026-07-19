@@ -1,0 +1,15 @@
+{
+  "name": "neon-gopher-studio",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Neon Gopher Studio - local AI product publishing workspace",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.86.1"
+  }
+}

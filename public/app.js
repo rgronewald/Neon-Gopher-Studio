@@ -365,8 +365,9 @@ $("downloadSatinBtn").onclick=()=>downloadProductMockup(generatedSatinDataUrl,"s
   const originalShowProduct=showProduct;
   const originalCollectEdited=collectEdited;
   const originalFillProduct=fillProduct;
-  let dashboardFilter="all";
-  let batchRunning=false;
+ let dashboardFilter="all";
+let dashboardSearch="";
+let batchRunning=false;
 
   const statusClass=status=>({
     "Pending Analysis":"pending","Analyzing":"analyzing","Ready for Review":"ready",
@@ -391,7 +392,28 @@ $("downloadSatinBtn").onclick=()=>downloadProductMockup(generatedSatinDataUrl,"s
     $("statMockups").textContent=counts["Mockups Needed"];
     $("statExport").textContent=counts["Ready to Export"];
     $("statFinished").textContent=counts["Finished"];
-    const filtered=dashboardFilter==="all"?products:products.filter(p=>p.status===dashboardFilter);
+    const query=dashboardSearch.trim().toLowerCase();
+
+const filtered=products.filter(p=>{
+  const matchesStatus=
+    dashboardFilter==="all" ||
+    p.status===dashboardFilter;
+
+  if(!matchesStatus)return false;
+  if(!query)return true;
+
+  const searchableValues=[
+    p.ng_id,
+    p.product_title,
+    p.original_filename,
+    p.primary_collection,
+    p.status
+  ];
+
+  return searchableValues.some(value=>
+    String(value||"").toLowerCase().includes(query)
+  );
+});
     $("dashboardQueueCount").textContent=`${filtered.length} item${filtered.length===1?"":"s"}`;
     const box=$("dashboardQueue");
     box.innerHTML=filtered.length?"":'<div class="empty">Nothing in this queue.</div>';
@@ -476,6 +498,25 @@ $("downloadSatinBtn").onclick=()=>downloadProductMockup(generatedSatinDataUrl,"s
   $("continueReviewBtn").onclick=()=>{const next=nextUnfinished();if(next)showProduct(next);else log("Production queue is complete.")};
   $("dashboardImportBtn").onclick=()=>$("batchFolderInput").click();
   $("batchImportBtn").onclick=()=>$("batchFolderInput").click();
+  const queueTools=document.querySelector(".queue-tools");
+
+if(queueTools&&!document.getElementById("dashboardSearch")){
+  const search=document.createElement("input");
+
+  search.id="dashboardSearch";
+  search.className="dashboard-search";
+  search.type="search";
+  search.placeholder="Search title, NG ID, filename, collection, or status";
+  search.autocomplete="off";
+  search.setAttribute("aria-label","Search production queue");
+
+  search.addEventListener("input",()=>{
+    dashboardSearch=search.value;
+    updateDashboard();
+  });
+
+  queueTools.prepend(search);
+}
   document.querySelectorAll("[data-queue-filter]").forEach(btn=>btn.onclick=()=>{dashboardFilter=btn.dataset.queueFilter;document.querySelectorAll(".queue-filter").forEach(b=>b.classList.toggle("selected",b.dataset.filter===dashboardFilter));updateDashboard()});
   document.querySelectorAll(".queue-filter").forEach(btn=>btn.onclick=()=>{dashboardFilter=btn.dataset.filter;document.querySelectorAll(".queue-filter").forEach(b=>b.classList.toggle("selected",b===btn));updateDashboard()});
 

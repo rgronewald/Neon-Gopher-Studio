@@ -384,6 +384,22 @@ let batchRunning=false;
     return `<div class="queue-thumb">${thumb}</div><div class="queue-copy"><strong>${escapeHtml(itemTitle(p))}</strong><span>${escapeHtml(p.ng_id)} • ${escapeHtml(p.primary_collection||"Unassigned")}</span><small>Step ${Number(p.current_step||0)+1} of 6 • ${Number(p.workflow_progress||0)}% complete</small></div><span class="status-pill ${statusClass(p.status)}">${escapeHtml(p.status||"Draft")}</span>`;
   }
   function updateDashboard(){
+    const nextTask=rankedTasks()[0]||null;
+const nextCard=document.getElementById("nextTaskCard");
+
+if(nextCard){
+  if(nextTask){
+    nextCard.hidden=false;
+    nextCard.querySelector("[data-next-title]").textContent=nextTask.title;
+    nextCard.querySelector("[data-next-message]").textContent=nextTask.message;
+    nextCard.querySelector("[data-open-next]").onclick=()=>showProduct(nextTask.product);
+  }else{
+    nextCard.hidden=false;
+    nextCard.querySelector("[data-next-title]").textContent="Production queue complete";
+    nextCard.querySelector("[data-next-message]").textContent="There are no unfinished products waiting for review.";
+    nextCard.querySelector("[data-open-next]").hidden=true;
+  }
+}
     const counts={all:products.length,"Ready for Review":0,"Needs Review":0,"Mockups Needed":0,"Ready to Export":0,"Finished":0};
     products.forEach(p=>{if(Object.hasOwn(counts,p.status))counts[p.status]++});
     $("statImported").textContent=counts.all;
@@ -492,9 +508,69 @@ const filtered=products.filter(p=>{
   ["artwork_type","colors","moods","styles","gift_recipients","rooms"].forEach(buildChips);
   fillProduct=function(p){originalFillProduct(p);setTimeout(()=>["artwork_type","colors","moods","styles","gift_recipients","rooms"].forEach(id=>$(id)?.dispatchEvent(new Event("input"))),0)};
 
-  function nextUnfinished(excludeId=""){
-    return products.slice().reverse().find(p=>p.ng_id!==excludeId&&p.status!=="Finished")||null;
+  function taskDetails(p){
+  const title=itemTitle(p);
+  const step=Number(p.current_step||0);
+
+  if(!p.product_title||title==="Untitled artwork"){
+    return {
+      product:p,
+      title,
+      message:"Review or generate the product title.",
+      priority:0
+    };
   }
+
+  const steps=[
+    "Review the artwork details and AI analysis.",
+    "Review the product title and listing description.",
+    "Review tags, keywords, and SEO information.",
+    "Create and review product mockups.",
+    "Complete the final export review.",
+    "Mark the product as finished."
+  ];
+
+  return {
+    product:p,
+    title,
+    message:steps[Math.min(step,steps.length-1)],
+    priority:step+1
+  };
+}
+
+function rankedTasks(excludeId=""){
+  return products
+    .filter(p=>p.ng_id!==excludeId&&p.status!=="Finished")
+    .map(taskDetails)
+    .sort((a,b)=>{
+      if(a.priority!==b.priority)return a.priority-b.priority;
+      return String(a.product.ng_id||"").localeCompare(
+        String(b.product.ng_id||"")
+      );
+    });
+}
+
+function nextUnfinished(excludeId=""){
+  return rankedTasks(excludeId)[0]?.product||null;
+}const dashboardStats=document.querySelector(".dashboard-stats");
+
+if(dashboardStats&&!document.getElementById("nextTaskCard")){
+  const nextCard=document.createElement("section");
+  nextCard.id="nextTaskCard";
+  nextCard.className="next-task-card";
+  nextCard.innerHTML=`
+    <div>
+      <span class="next-task-label">WHAT'S NEXT?</span>
+      <strong data-next-title>Checking production queue...</strong>
+      <p data-next-message></p>
+    </div>
+    <button type="button" class="next-task-button" data-open-next>
+      Open Next Task
+    </button>
+  `;
+
+  dashboardStats.parentNode.insertBefore(nextCard,dashboardStats);
+}
   $("continueReviewBtn").onclick=()=>{const next=nextUnfinished();if(next)showProduct(next);else log("Production queue is complete.")};
   $("dashboardImportBtn").onclick=()=>$("batchFolderInput").click();
   $("batchImportBtn").onclick=()=>$("batchFolderInput").click();

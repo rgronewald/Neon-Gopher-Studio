@@ -31,8 +31,41 @@ function showProduct(p){currentProduct=p;fillProduct(p);if(p.artwork_url){$("pre
 function collectEdited(){const data={};for(const f of scalarFields)data[f]=$(f).value.trim();for(const f of arrayFields)data[f]=$(f).value.split(",").map(x=>x.trim()).filter(Boolean);data.confidence=currentProduct?.confidence||0;data.status=currentProduct?.status||"Draft";data.format=selectedFormat;data.sell_as=selectedSellAs;data.source_type=$("sourceType").value.trim();data.rights_status=$("rightsStatus").value.trim();return data}
 async function generate(){try{$("error").textContent="";if(!imageDataUrl)throw new Error("Choose an artwork image first.");if(!$("artworkName").value.trim())throw new Error("Enter a working artwork name.");if(!selectedFormat)throw new Error("Choose a format.");setBusy(true);log("Sending artwork to AI for analysis…");const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ngId:currentProduct?.ng_id,artworkName:$("artworkName").value.trim(),format:selectedFormat,sellAs:selectedSellAs,sourceType:$("sourceType").value.trim(),rightsStatus:$("rightsStatus").value.trim(),imageDataUrl,originalFilename})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Generation failed.");currentProduct=j.data;fillProduct(currentProduct);lastSavedPayload=JSON.stringify(collectEdited());$("currentNgId").textContent=currentProduct.ng_id;log(`${currentProduct.ng_id} generated and saved.`);await refreshLibrary()}catch(e){$("error").textContent=e.message;log(`ERROR: ${e.message}`)}finally{setBusy(false)}}
 let autoSaveTimer=null,saveInProgress=false,saveQueued=false,lastSavedPayload="";
-function setSaveStatus(message){if(currentProduct)$("recordStatus").textContent=`${currentProduct.ng_id} • ${message}`}
+function setSaveStatus(message){
+  if(!currentProduct)return;
+
+  const status=$("recordStatus");
+  status.textContent=`${currentProduct.ng_id} • ${message}`;
+
+  status.classList.remove(
+    "save-saved",
+    "save-saving",
+    "save-unsaved",
+    "save-failed"
+  );
+
+  const text=message.toLowerCase();
+
+  if(text.includes("failed")){
+    status.classList.add("save-failed");
+  }else if(text.includes("saving")){
+    status.classList.add("save-saving");
+  }else if(text.includes("unsaved")){
+    status.classList.add("save-unsaved");
+  }else if(text.includes("saved")){
+    status.classList.add("save-saved");
+  }
+}
+
 function scheduleAutoSave(){
+  if(!currentProduct)return;
+  clearTimeout(autoSaveTimer);
+  setSaveStatus("unsaved changes");
+  autoSaveTimer=setTimeout(()=>saveChanges(true),1000);
+}
+
+async function saveChanges(isAutoSave=false){
+}function scheduleAutoSave(){
   if(!currentProduct)return;
   clearTimeout(autoSaveTimer);
   setSaveStatus("unsaved changes");

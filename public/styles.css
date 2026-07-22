@@ -129,4 +129,67 @@
   .next-task-button{
     width:100%;
   }
+/* v2.1 automatic save indicator */
+#recordStatus{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:5px 9px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  transition:.2s ease;
+}
+
+#recordStatus::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--muted);
+}
+
+#recordStatus.save-saved{
+  color:var(--neon);
+  border-color:#2d7e4d;
+  background:#10261b;
+}
+
+#recordStatus.save-saved::before{
+  background:var(--neon);
+}
+
+#recordStatus.save-saving{
+  color:var(--blue);
+  border-color:#27638d;
+  background:#0d2131;
+}
+
+#recordStatus.save-saving::before{
+  background:var(--blue);
+  animation:savePulse .8s infinite alternate;
+}
+
+#recordStatus.save-unsaved{
+  color:#ffd166;
+  border-color:#866b27;
+  background:#2b2410;
+}
+
+#recordStatus.save-unsaved::before{
+  background:#ffd166;
+}
+
+#recordStatus.save-failed{
+  color:var(--danger);
+  border-color:#8a3842;
+  background:#2d1116;
+}
+
+#recordStatus.save-failed::before{
+  background:var(--danger);
+}
+
+@keyframes savePulse{
+  from{opacity:.35}
+  to{opacity:1}
 }

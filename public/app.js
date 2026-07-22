@@ -413,6 +413,29 @@ let batchRunning=false;
   }
   function itemTitle(p){return p.product_title||p.original_filename?.replace(/\.[^.]+$/,'')||"Untitled artwork"}
   function queueItemMarkup(p){
+  const thumb = p.artwork_url
+    ? `<img src="${p.artwork_url}" alt="">`
+    : `<div class="queue-no-thumb">NG</div>`;
+
+  return `
+    <div class="queue-thumb">${thumb}</div>
+    <div class="queue-copy">
+      <strong>${escapeHtml(itemTitle(p))}</strong>
+      <span>
+        ${escapeHtml(p.ng_id)} •
+        ${escapeHtml(p.primary_collection || "Unassigned")}
+      </span>
+      <small>
+        Step ${Number(p.current_step || 0) + 1} of 6 •
+        ${Number(p.workflow_progress || 0)}% complete
+      </small>
+    </div>
+    <span class="status-pill ${statusClass(p.status)}">
+      ${escapeHtml(p.status || "Draft")}
+    </span>
+  `;
+}
+
   function updateDashboard(){
     const nextTask=rankedTasks()[0]||null;
 const nextCard=document.getElementById("nextTaskCard");
@@ -684,4 +707,4 @@ if(queueTools&&!document.getElementById("dashboardSearch")){
 
   // Start v2 on the dashboard and refresh after the older startup call completes.
   setTimeout(()=>{openView("dashboardView");refreshLibrary()},500);
-})();
+  })();

@@ -1,0 +1,56 @@
+{
+  "profiles": [
+    {
+      "id": "signature-gallery-canvas",
+      "name": "Signature Gallery Canvas",
+      "description": "Gallery-wrapped canvas wall art.",
+      "enabled": true,
+      "borderInches": 0,
+      "sizes": {
+        "classic": [
+          "12x18",
+          "16x24",
+          "20x30",
+          "24x36"
+        ],
+        "square": [
+          "12x12",
+          "16x16",
+          "20x20",
+          "24x24"
+        ],
+        "panorama": [
+          "12x36",
+          "16x48",
+          "20x60"
+        ]
+      }
+    },
+    {
+      "id": "premium-satin-fine-art-print",
+      "name": "Premium Satin Fine Art Print",
+      "description": "Satin-finish fine art print.",
+      "enabled": true,
+      "borderInches": 0.25,
+      "sizes": {
+        "classic": [
+          "12x18",
+          "16x24",
+          "20x30",
+          "24x36"
+        ],
+        "square": [
+          "12x12",
+          "16x16",
+          "20x20",
+          "24x24"
+        ],
+        "panorama": [
+          "12x36",
+          "16x48",
+          "20x60"
+        ]
+      }
+    }
+  ]
+}

@@ -306,7 +306,86 @@ app.post("/api/backup", (req, res) => {
     res.status(500).json({ error: error.message || "Backup failed." });
   }
 });
+const PRODUCT_PROFILES_PATH = path.join(DATA_DIR, "product-profiles.json");
 
+const DEFAULT_PRODUCT_PROFILES = [
+  {
+    id: "signature-gallery-canvas",
+    name: "Signature Gallery Canvas",
+    description: "Gallery-wrapped canvas wall art.",
+    enabled: true,
+    borderInches: 0,
+    sizes: {
+      classic: ["12x18", "16x24", "20x30", "24x36"],
+      square: ["12x12", "16x16", "20x20", "24x24"],
+      panorama: ["12x36", "16x48", "20x60"]
+    }
+  },
+  {
+    id: "premium-satin-fine-art-print",
+    name: "Premium Satin Fine Art Print",
+    description: "Satin-finish fine art print.",
+    enabled: true,
+    borderInches: 0.25,
+    sizes: {
+      classic: ["12x18", "16x24", "20x30", "24x36"],
+      square: ["12x12", "16x16", "20x20", "24x24"],
+      panorama: ["12x36", "16x48", "20x60"]
+    }
+  }
+];
+
+function readProductProfiles() {
+  if (!fs.existsSync(PRODUCT_PROFILES_PATH)) {
+    fs.writeFileSync(
+      PRODUCT_PROFILES_PATH,
+      JSON.stringify({ profiles: DEFAULT_PRODUCT_PROFILES }, null, 2)
+    );
+
+    return DEFAULT_PRODUCT_PROFILES;
+  }
+
+  const saved = JSON.parse(
+    fs.readFileSync(PRODUCT_PROFILES_PATH, "utf8")
+  );
+
+  return Array.isArray(saved.profiles)
+    ? saved.profiles
+    : DEFAULT_PRODUCT_PROFILES;
+}
+
+app.get("/api/product-profiles", (req, res) => {
+  try {
+    res.json({ profiles: readProductProfiles() });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message || "Could not load product profiles."
+    });
+  }
+});
+
+app.put("/api/product-profiles", (req, res) => {
+  try {
+    const profiles = req.body?.profiles;
+
+    if (!Array.isArray(profiles)) {
+      return res.status(400).json({
+        error: "Profiles must be provided as an array."
+      });
+    }
+
+    fs.writeFileSync(
+      PRODUCT_PROFILES_PATH,
+      JSON.stringify({ profiles }, null, 2)
+    );
+
+    res.json({ ok: true, profiles });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message || "Could not save product profiles."
+    });
+  }
+});
 app.get("*", (req, res) => res.sendFile(path.join(ROOT, "public", "index.html")));
 
 app.listen(PORT, () => {

@@ -413,9 +413,6 @@ let batchRunning=false;
   }
   function itemTitle(p){return p.product_title||p.original_filename?.replace(/\.[^.]+$/,'')||"Untitled artwork"}
   function queueItemMarkup(p){
-    const thumb=p.artwork_url?`<img src="${p.artwork_url}" alt="">`:`<div class="queue-no-thumb">NG</div>`;
-    return `<div class="queue-thumb">${thumb}</div><div class="queue-copy"><strong>${escapeHtml(itemTitle(p))}</strong><span>${escapeHtml(p.ng_id)} • ${escapeHtml(p.primary_collection||"Unassigned")}</span><small>Step ${Number(p.current_step||0)+1} of 6 • ${Number(p.workflow_progress||0)}% complete</small></div><span class="status-pill ${statusClass(p.status)}">${escapeHtml(p.status||"Draft")}</span>`;
-  }
   function updateDashboard(){
     const nextTask=rankedTasks()[0]||null;
 const nextCard=document.getElementById("nextTaskCard");
@@ -554,21 +551,43 @@ const filtered=products.filter(p=>{
     };
   }
 
-  const steps=[
-    "Review the artwork details and AI analysis.",
-    "Review the product title and listing description.",
-    "Review tags, keywords, and SEO information.",
-    "Create and review product mockups.",
-    "Complete the final export review.",
-    "Mark the product as finished."
-  ];
+ const steps=[
+  {
+    action:"Review Artwork Analysis",
+    time:"20 sec"
+  },
+  {
+    action:"Approve Listing Title & Description",
+    time:"30 sec"
+  },
+  {
+    action:"Review Products & Sizes",
+    time:"15 sec"
+  },
+  {
+    action:"Select Mockup Rooms",
+    time:"45 sec"
+  },
+  {
+    action:"Review SEO & Export",
+    time:"20 sec"
+  },
+  {
+    action:"Finish Product",
+    time:"10 sec"
+  }
+];
 
-  return {
-    product:p,
-    title,
-    message:steps[Math.min(step,steps.length-1)],
-    priority:step+1
-  };
+
+const nextStep=steps[Math.min(step,steps.length-1)];
+
+return {
+  product:p,
+  title,
+  message:`Next Action: ${nextStep.action}`,
+  eta:nextStep.time,
+  priority:step+1
+};
 }
 
 function rankedTasks(excludeId=""){

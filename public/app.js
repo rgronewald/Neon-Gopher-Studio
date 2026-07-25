@@ -235,7 +235,7 @@ $("addPlacementBtn").onclick=()=>addPlacement();$("deletePlacementBtn").onclick=
 const originalCollectEdited=collectEdited;
 collectEdited=function(){const d=originalCollectEdited();d.artwork_orientations=[...document.querySelectorAll('[name="artOrientation"]:checked')].map(x=>x.value);d.product_profiles=[...document.querySelectorAll('[name="artProfile"]:checked')].map(x=>x.value);return d};
 const originalFillProduct=fillProduct;
-fillProduct=function(p){originalFillProduct(p);const orientations=p.artwork_orientations?.length?p.artwork_orientations:[p.format||"Landscape"];document.querySelectorAll('[name="artOrientation"]').forEach(x=>x.checked=orientations.includes(x.value));const profiles=p.product_profiles?.length?p.product_profiles:(p.sell_as==="Canvas Only"?["signature-gallery-canvas"]:p.sell_as==="Print Only"?["premium-satin-fine-art-print"]:["signature-gallery-canvas","premium-satin-fine-art-print"]);document.querySelectorAll('[name="artProfile"]').forEach(x=>x.checked=profiles.includes(x.value))};
+fillProduct=function(p){originalFillProduct(p);if(p?.ng_id)loadWorkflowMockups(p.ng_id);const orientations=p.artwork_orientations?.length?p.artwork_orientations:[p.format||"Landscape"];document.querySelectorAll('[name="artOrientation"]').forEach(x=>x.checked=orientations.includes(x.value));const profiles=p.product_profiles?.length?p.product_profiles:(p.sell_as==="Canvas Only"?["signature-gallery-canvas"]:p.sell_as==="Print Only"?["premium-satin-fine-art-print"]:["signature-gallery-canvas","premium-satin-fine-art-print"]);document.querySelectorAll('[name="artProfile"]').forEach(x=>x.checked=profiles.includes(x.value))};
 document.querySelectorAll('[name="artOrientation"],[name="artProfile"]').forEach(x=>x.addEventListener("change",scheduleAutoSave));
 
 let productProfiles=[];
@@ -244,10 +244,445 @@ function renderProductProfiles(){const box=$("profileCards");box.innerHTML="";pr
 $("saveProfilesBtn").onclick=async()=>{try{$("profilesError").textContent="";const r=await fetch("/api/product-profiles",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({profiles:productProfiles})}),j=await r.json();if(!r.ok)throw new Error(j.error);$("profilesStatus").textContent="Product profiles saved.";log("Product profiles saved.")}catch(e){$("profilesError").textContent=e.message}};
 loadProductProfiles();
 
-let generatedCanvasDataUrl="",generatedSatinDataUrl="";
-async function renderProductMockup(profileId){if(!sceneImageDataUrl)throw new Error("Load or choose a room scene first.");if(!sceneArea)throw new Error("Select a drawn placement first.");if(!mockupArtworkDataUrl)throw new Error("Choose an artwork image first.");const [room,art]=await Promise.all([loadCanvasImage(sceneImageDataUrl),loadCanvasImage(mockupArtworkDataUrl)]),c=document.createElement("canvas");c.width=room.naturalWidth||room.width;c.height=room.naturalHeight||room.height;const ctx=c.getContext("2d");ctx.drawImage(room,0,0,c.width,c.height);let x=sceneArea.x*c.width,y=sceneArea.y*c.height,w=sceneArea.width*c.width,h=sceneArea.height*c.height;ctx.save();ctx.shadowColor="rgba(0,0,0,.34)";ctx.shadowBlur=Math.max(5,Math.round(c.width*.007));ctx.shadowOffsetY=Math.max(2,Math.round(c.height*.004));if(profileId==="premium-satin-fine-art-print"){const frame=Math.max(4,Math.round(Math.min(w,h)*.022));ctx.fillStyle="#151515";ctx.fillRect(x-frame,y-frame,w+frame*2,h+frame*2);ctx.fillStyle="#fff";ctx.fillRect(x,y,w,h);const border=Math.max(2,Math.round(Math.min(w,h)*.018));drawArtworkFit(ctx,art,x+border,y+border,w-border*2,h-border*2,$("mockupFit").value)}else{ctx.fillStyle="#fff";ctx.fillRect(x,y,w,h);drawArtworkFit(ctx,art,x,y,w,h,$("mockupFit").value);ctx.strokeStyle="rgba(0,0,0,.22)";ctx.lineWidth=Math.max(1,Math.round(c.width*.001));ctx.strokeRect(x,y,w,h)}ctx.restore();return c.toDataURL("image/png")}
-generateMockup=async function(){try{$("sceneError").textContent="";$("generateMockupBtn").disabled=true;const id=$("mockupProduct").value;generatedMockupDataUrl=await renderProductMockup(id);if(id==="signature-gallery-canvas")generatedCanvasDataUrl=generatedMockupDataUrl;else generatedSatinDataUrl=generatedMockupDataUrl;$("downloadMockupBtn").disabled=false;$("downloadCanvasBtn").disabled=!generatedCanvasDataUrl;$("downloadSatinBtn").disabled=!generatedSatinDataUrl;$("sceneStatus").textContent=`${id==="signature-gallery-canvas"?"Canvas":"Satin fine art print"} mockup generated.`}catch(e){$("sceneError").textContent=e.message}finally{$("generateMockupBtn").disabled=false}};
-$("generateMockupBtn").onclick=generateMockup;
+let generatedCanvasDataUrl = "";
+let generatedSatinDataUrl = "";
+async function loadWorkflowMockups(ngId) {
+    const gallery = $("workflowMockupGallery");
+
+    if (!gallery) return;
+
+    gallery.innerHTML =
+        `<div class="empty">Loading mockups...</div>`;
+
+    try {
+        const response = await fetch(
+            `/api/products/${encodeURIComponent(ngId)}/mockups`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load mockups.");
+        }
+
+        gallery.innerHTML = "";
+
+        if (!data.files.length) {
+            gallery.innerHTML =
+                `<div class="empty">No mockups generated yet.</div>`;
+            return;
+        }
+
+data.files.forEach(file => {
+    const img = document.createElement("img");
+    img.src = file.url;
+    img.alt = file.filename;
+    img.title = file.filename;
+    gallery.appendChild(img);
+});
+
+    } catch (err) {
+        gallery.innerHTML =
+            `<div class="empty">${err.message}</div>`;
+    }
+}
+function normalizeMockupName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function safeMockupFilename(value) {
+  return String(value || "mockup")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function selectedProductRooms() {
+  const value = currentProduct?.rooms;
+
+  if (Array.isArray(value)) {
+    return value.map(room => String(room).trim()).filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(",")
+    .map(room => room.trim())
+    .filter(Boolean);
+}
+
+function selectedProductProfiles() {
+  const profiles = currentProduct?.product_profiles;
+
+  if (Array.isArray(profiles) && profiles.length) {
+    return profiles;
+  }
+
+  if (currentProduct?.sell_as === "Canvas Only") {
+    return ["signature-gallery-canvas"];
+  }
+
+  if (currentProduct?.sell_as === "Print Only") {
+    return ["premium-satin-fine-art-print"];
+  }
+
+  return [
+    "signature-gallery-canvas",
+    "premium-satin-fine-art-print"
+  ];
+}
+
+function sceneMatchesRoom(scene, roomName) {
+  const wanted = normalizeMockupName(roomName);
+
+  const sceneValues = [
+    scene.name,
+    scene.category,
+    scene.subcategory,
+    scene.id
+  ].map(normalizeMockupName);
+
+  return sceneValues.some(value =>
+    value === wanted ||
+    value.includes(wanted) ||
+    wanted.includes(value)
+  );
+}
+
+function firstValidScenePlacement(scene) {
+  const available = Array.isArray(scene.placements)
+    ? scene.placements
+    : [];
+
+  const placement = available.find(item =>
+    item?.area &&
+    Number(item.area.width) >= 0.02 &&
+    Number(item.area.height) >= 0.02
+  );
+
+  if (placement) {
+    return placement;
+  }
+
+  if (scene.artworkArea) {
+    return {
+      name: "Artwork Placement",
+      area: scene.artworkArea
+    };
+  }
+
+  return null;
+}
+
+async function renderSceneProductMockup(
+  scene,
+  placement,
+  profileId,
+  artworkImage
+) {
+  const roomUrl =
+    scene.background_url ||
+    scene.backgroundDataUrl ||
+    scene.image_url;
+
+  if (!roomUrl) {
+    throw new Error(`Scene "${scene.name || scene.id}" has no room image.`);
+  }
+
+const roomImageSource = roomUrl.startsWith("data:")
+  ? roomUrl
+  : roomUrl.includes("?")
+    ? `${roomUrl}&t=${Date.now()}`
+    : `${roomUrl}?t=${Date.now()}`;
+
+const roomImage = await loadCanvasImage(roomImageSource);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = roomImage.naturalWidth || roomImage.width;
+  canvas.height = roomImage.naturalHeight || roomImage.height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(roomImage, 0, 0, canvas.width, canvas.height);
+
+  const area = placement.area;
+
+  let x = area.x * canvas.width;
+  let y = area.y * canvas.height;
+  let width = area.width * canvas.width;
+  let height = area.height * canvas.height;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.34)";
+  ctx.shadowBlur = Math.max(5, Math.round(canvas.width * 0.006));
+  ctx.shadowOffsetY = Math.max(2, Math.round(canvas.height * 0.004));
+
+  if (profileId === "premium-satin-fine-art-print") {
+    const frame = Math.max(
+      4,
+      Math.round(Math.min(width, height) * 0.022)
+    );
+
+    ctx.fillStyle = "#151515";
+    ctx.fillRect(
+      x - frame,
+      y - frame,
+      width + frame * 2,
+      height + frame * 2
+    );
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, width, height);
+
+    const border = Math.max(
+      2,
+      Math.round(Math.min(width, height) * 0.018)
+    );
+
+    drawArtworkFit(
+      ctx,
+      artworkImage,
+      x + border,
+      y + border,
+      width - border * 2,
+      height - border * 2,
+      $("mockupFit").value
+    );
+  } else {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, width, height);
+
+    drawArtworkFit(
+      ctx,
+      artworkImage,
+      x,
+      y,
+      width,
+      height,
+      $("mockupFit").value
+    );
+
+    ctx.strokeStyle = "rgba(0,0,0,.22)";
+    ctx.lineWidth = Math.max(
+      1,
+      Math.round(canvas.width * 0.001)
+    );
+    ctx.strokeRect(x, y, width, height);
+  }
+
+  ctx.restore();
+
+  return canvas.toDataURL("image/png");
+}
+
+function downloadGeneratedMockup(dataUrl, filename) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+async function generateAllMockups() {
+  const button = $("generateMockupBtn");
+
+  try {
+    $("sceneError").textContent = "";
+    $("sceneStatus").textContent = "";
+
+    if (!currentProduct) {
+      throw new Error("Open a product before generating mockups.");
+    }
+
+ if (!mockupArtworkDataUrl) {
+  mockupArtworkDataUrl =
+    imageDataUrl ||
+    currentProduct.artwork_url ||
+    $("preview").src;
+
+  mockupArtworkName =
+    originalFilename ||
+    currentProduct.original_filename ||
+    currentProduct.product_title ||
+    "artwork";
+}
+
+if (!mockupArtworkDataUrl) {
+  throw new Error("No artwork image is available for this product.");
+}
+    const selectedRooms = selectedProductRooms();
+    const selectedProfiles = selectedProductProfiles();
+
+    if (!selectedRooms.length) {
+      throw new Error(
+        "This product does not have any mockup rooms selected."
+      );
+    }
+
+    if (!selectedProfiles.length) {
+      throw new Error(
+        "This product does not have a product profile selected."
+      );
+    }
+
+    button.disabled = true;
+    button.textContent = "Generating All…";
+
+    const sceneResponse = await fetch("/api/scenes");
+    const sceneResult = await sceneResponse.json();
+
+    if (!sceneResponse.ok) {
+      throw new Error(
+        sceneResult.error || "Could not load saved room scenes."
+      );
+    }
+
+    const scenes = sceneResult.scenes || [];
+    const artworkImage = await loadCanvasImage(mockupArtworkDataUrl);
+
+    const missingRooms = [];
+    const generated = [];
+
+    for (const roomName of selectedRooms) {
+      const matchingScene = scenes.find(scene =>
+        sceneMatchesRoom(scene, roomName)
+      );
+
+      if (!matchingScene) {
+        missingRooms.push(roomName);
+        continue;
+      }
+
+      const placement = firstValidScenePlacement(matchingScene);
+
+      if (!placement) {
+        missingRooms.push(`${roomName} — no placement`);
+        continue;
+      }
+
+      for (const profileId of selectedProfiles) {
+        const dataUrl = await renderSceneProductMockup(
+          matchingScene,
+          placement,
+          profileId,
+          artworkImage
+        );
+
+        const productId = safeMockupFilename(
+          currentProduct.id ||
+          currentProduct.ng_id ||
+          currentProduct.title ||
+          "product"
+        );
+
+        const roomPart = safeMockupFilename(roomName);
+
+        const profilePart =
+          profileId === "signature-gallery-canvas"
+            ? "canvas"
+            : "satin-print";
+
+const ngId =
+  currentProduct?.ng_id ||
+  currentProduct?.ngId ||
+  productId ||
+  "NG-UNKNOWN";
+
+const filename =
+  `${ngId}-${roomPart}-${profilePart}-mockup.png`;
+
+        generated.push({
+          dataUrl,
+          filename,
+          profileId
+        });
+      }
+    }
+
+    if (!generated.length) {
+      throw new Error(
+        "No mockups were generated. The selected room names did not match any saved scenes."
+      );
+    }
+
+    for (const mockup of generated) {
+    const ngId =
+  currentProduct?.ng_id ||
+  currentProduct?.ngId;
+
+if (!ngId) {
+  throw new Error("No NG ID is available for saving mockups.");
+}
+
+const response = await fetch(
+  `/api/products/${encodeURIComponent(ngId)}/mockups`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      filename: mockup.filename,
+      image: mockup.dataUrl
+    })
+  }
+);
+
+const result = await response.json();
+
+if (!response.ok) {
+  throw new Error(result.error || "Could not save mockup.");
+}
+
+      if (mockup.profileId === "signature-gallery-canvas") {
+        generatedCanvasDataUrl = mockup.dataUrl;
+      } else {
+        generatedSatinDataUrl = mockup.dataUrl;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+
+    generatedMockupDataUrl =
+      generated[generated.length - 1].dataUrl;
+
+    $("downloadMockupBtn").disabled = false;
+    $("downloadCanvasBtn").disabled = !generatedCanvasDataUrl;
+    $("downloadSatinBtn").disabled = !generatedSatinDataUrl;
+
+    let message =
+      `${generated.length} mockup${generated.length === 1 ? "" : "s"} generated ` +
+      `for ${selectedRooms.length - missingRooms.length} selected room` +
+      `${selectedRooms.length - missingRooms.length === 1 ? "" : "s"}.`;
+
+    if (missingRooms.length) {
+      message += ` Missing saved scenes: ${missingRooms.join(", ")}.`;
+    }
+
+    $("sceneStatus").textContent = message;
+    log(message);
+  } catch (error) {
+    $("sceneError").textContent = error.message;
+    log(`ERROR: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate All Mockups";
+  }
+}
+
+generateMockup = generateAllMockups;
+
+$("generateMockupBtn").onclick = generateAllMockups;
+$("generateMockupBtn").textContent = "Generate All Mockups";
+
+const workflowButton = $("workflowGenerateMockupsBtn");
+
+if (workflowButton) {
+    workflowButton.onclick = generateAllMockups;
+}
 $("generateBothBtn").onclick=async()=>{try{$("sceneError").textContent="";$("generateBothBtn").disabled=true;[generatedCanvasDataUrl,generatedSatinDataUrl]=await Promise.all([renderProductMockup("signature-gallery-canvas"),renderProductMockup("premium-satin-fine-art-print")]);generatedMockupDataUrl=generatedCanvasDataUrl;$("downloadMockupBtn").disabled=false;$("downloadCanvasBtn").disabled=false;$("downloadSatinBtn").disabled=false;$("sceneStatus").textContent="Canvas and satin fine art print mockups generated.";log("Generated one canvas and one satin fine art print mockup.")}catch(e){$("sceneError").textContent=e.message}finally{$("generateBothBtn").disabled=false}};
 function downloadProductMockup(data,productSlug){if(!data)return;const a=document.createElement("a"),sceneId=$("sceneId").value||"SCENE",base=(mockupArtworkName||"artwork").replace(/\.[^.]+$/,"").replace(/[^a-z0-9_-]+/gi,"-"),orientation=(activePlacement()?.type||"display").toLowerCase();a.href=data;a.download=`${sceneId}-${orientation}-${base}-${productSlug}.png`;a.click()}
 $("downloadCanvasBtn").onclick=()=>downloadProductMockup(generatedCanvasDataUrl,"canvas");
@@ -417,25 +852,68 @@ let batchRunning=false;
     ? `<img src="${p.artwork_url}" alt="">`
     : `<div class="queue-no-thumb">NG</div>`;
 
+  const progress = Math.max(
+    0,
+    Math.min(100, Number(p.workflow_progress || 0))
+  );
+
   return `
     <div class="queue-thumb">${thumb}</div>
-    <div class="queue-copy">
-      <strong>${escapeHtml(itemTitle(p))}</strong>
-      <span>
-        ${escapeHtml(p.ng_id)} •
-        ${escapeHtml(p.primary_collection || "Unassigned")}
-      </span>
-      <small>
-        Step ${Number(p.current_step || 0) + 1} of 6 •
-        ${Number(p.workflow_progress || 0)}% complete
-      </small>
+
+    <div class="queue-card-content">
+      <div class="queue-card-header">
+        <div class="queue-copy">
+          <strong>${escapeHtml(itemTitle(p))}</strong>
+          <span>
+            ${escapeHtml(p.ng_id)} •
+            ${escapeHtml(p.primary_collection || "Unassigned")}
+          </span>
+        </div>
+
+        <span class="status-pill ${statusClass(p.status)}">
+          ${escapeHtml(p.status || "Draft")}
+        </span>
+      </div>
+
+      <div class="queue-progress-row">
+        <div class="queue-progress-track">
+          <div
+            class="queue-progress-fill ${statusClass(p.status)}"
+            style="width:${progress}%"
+          ></div>
+        </div>
+
+        <small>${progress}%</small>
+      </div>
+
+      <div class="queue-card-footer">
+        <small>
+          Step ${Number(p.current_step || 0) + 1} of 6
+        </small>
+
+        <div class="queue-card-actions">
+          <button
+            type="button"
+            class="continue-review-btn"
+            data-review-product="${escapeHtml(p.ng_id)}"
+          >
+            Continue Review
+          </button>
+
+          <button
+            type="button"
+            class="delete-product-btn"
+            title="Delete Product"
+            aria-label="Delete Product"
+            data-delete-product="${escapeHtml(p.ng_id)}"
+          >
+            🗑
+          </button>
+        </div>
+      </div>
     </div>
-    <span class="status-pill ${statusClass(p.status)}">
-      ${escapeHtml(p.status || "Draft")}
-    </span>
   `;
 }
-
   function updateDashboard(){
     const nextTask=rankedTasks()[0]||null;
 const nextCard=document.getElementById("nextTaskCard");
@@ -486,8 +964,14 @@ const filtered=products.filter(p=>{
     $("dashboardQueueCount").textContent=`${filtered.length} item${filtered.length===1?"":"s"}`;
     const box=$("dashboardQueue");
     box.innerHTML=filtered.length?"":'<div class="empty">Nothing in this queue.</div>';
-    filtered.forEach(p=>{const row=document.createElement("button");row.className="dashboard-queue-item";row.innerHTML=queueItemMarkup(p);row.onclick=()=>showProduct(p);box.appendChild(row)});
-  }
+filtered.forEach(p=>{
+  const row=document.createElement("div");
+  row.className="dashboard-queue-item";
+  row.innerHTML=queueItemMarkup(p);
+  row.onclick=()=>showProduct(p);
+  box.appendChild(row);
+});
+}
 
   refreshLibrary=async function(search=""){
     const r=await fetch(`/api/products?search=${encodeURIComponent(search)}`);const j=await r.json();products=j.products||[];
@@ -499,7 +983,91 @@ const filtered=products.filter(p=>{
     if(!products.length){list.innerHTML='<div class="empty" style="height:auto;padding:20px">No artwork imported yet.</div>';return}
     for(const p of products){const el=document.createElement("div");el.className="product-item queue-product-item"+(currentProduct?.ng_id===p.ng_id?" selected":"");el.innerHTML=queueItemMarkup(p);el.onclick=()=>showProduct(p);list.appendChild(el)}
   };
-  showProduct=function(p){
+    document.addEventListener("click", async event => {
+      const reviewButton = event.target.closest("[data-review-product]");
+
+if (reviewButton) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const ngId = reviewButton.dataset.reviewProduct;
+  const product = products.find(p => p.ng_id === ngId);
+
+  if (product) {
+    showProduct(product);
+  }
+
+  return;
+}
+    const deleteButton = event.target.closest("[data-delete-product]");
+    if (!deleteButton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const ngId = deleteButton.dataset.deleteProduct;
+
+    const confirmed = window.confirm(
+      `Delete ${ngId}?\n\nThis cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `/api/products/${encodeURIComponent(ngId)}`,
+        { method: "DELETE" }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Delete failed.");
+      }
+
+      if (currentProduct?.ng_id === ngId) {
+        currentProduct = null;
+      }
+
+      await refreshLibrary();
+    } catch (error) {
+      window.alert(error.message || "Delete failed.");
+    }
+}, true);
+showProduct=async function(p){
+  try{
+    const response=await fetch(
+      `/api/products/${encodeURIComponent(p.ng_id)}`
+    );
+
+    const result=await response.json();
+
+    if(!response.ok){
+      throw new Error(result.error||"Could not load product.");
+    }
+
+    const fullProduct=result.product||result.data||result;
+
+    originalShowProduct(fullProduct);
+    openView("productsView");
+
+    setTimeout(()=>{
+      const step=Math.max(
+        0,
+        Math.min(5,Number(fullProduct.current_step||0))
+      );
+
+      document
+        .querySelector(
+          `[data-product-tab][data-step="${step}"]`
+        )
+        ?.click();
+    },30);
+  }catch(error){
+    log(`ERROR: ${error.message}`);
+    window.alert(error.message);
+  }
+};  showProduct=function(p){
     originalShowProduct(p);openView("productsView");
     setTimeout(()=>{const step=Math.max(0,Math.min(5,Number(p.current_step||0)));document.querySelector(`[data-product-tab][data-step="${step}"]`)?.click()},30);
   };
@@ -646,8 +1214,17 @@ if(dashboardStats&&!document.getElementById("nextTaskCard")){
 
   dashboardStats.parentNode.insertBefore(nextCard,dashboardStats);
 }
-  $("continueReviewBtn").onclick=()=>{const next=nextUnfinished();if(next)showProduct(next);else log("Production queue is complete.")};
-  $("dashboardImportBtn").onclick=()=>$("batchFolderInput").click();
+$("continueReviewBtn").onclick=()=>{
+  const next=nextUnfinished();
+
+  if(next){
+    showProduct(next);
+  }else{
+    log("Production queue is complete.");
+  }
+};
+
+$("dashboardImportBtn").onclick=()=>$("batchFolderInput").click();
   $("batchImportBtn").onclick=()=>$("batchFolderInput").click();
   const queueTools=document.querySelector(".queue-tools");
 
@@ -672,17 +1249,102 @@ if(queueTools&&!document.getElementById("dashboardSearch")){
   document.querySelectorAll(".queue-filter").forEach(btn=>btn.onclick=()=>{dashboardFilter=btn.dataset.filter;document.querySelectorAll(".queue-filter").forEach(b=>b.classList.toggle("selected",b===btn));updateDashboard()});
 
   async function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
-  async function analyzeBatchFile(file,index,total){
-    $("batchCurrentFile").textContent=`Analyzing ${file.name}`;
-    const create=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
-    const draft=await create.json();if(!create.ok)throw new Error(draft.error||"Could not create artwork record.");
-    const dataUrl=await fileToDataUrl(file);const format=await inferFormat(file);const name=file.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
-    await fetch(`/api/products/${encodeURIComponent(draft.product.ng_id)}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"Analyzing",format,sell_as:"Canvas & Print",current_step:0,workflow_progress:0})});
-    await refreshLibrary();
-    const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ngId:draft.product.ng_id,artworkName:name,format,sellAs:"Canvas & Print",sourceType:"Original / User Supplied",rightsStatus:"Licensed for Commercial Use",imageDataUrl:dataUrl,originalFilename:file.name})});
-    const j=await r.json();if(!r.ok)throw new Error(`${file.name}: ${j.error||"Analysis failed"}`);
-    const pct=Math.round(((index+1)/total)*100);$("batchProgressBar").style.width=`${pct}%`;$("batchProgressText").textContent=`${index+1} of ${total} complete • ${pct}%`;
+  async function analyzeBatchFile(file, index, total) {
+  $("batchCurrentFile").textContent = `Analyzing ${file.name}`;
+
+  const create = await fetch("/api/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  });
+
+  const draft = await create.json();
+
+  if (!create.ok) {
+    throw new Error(
+      draft.error || "Could not create artwork record."
+    );
   }
+
+  const dataUrl = await fileToDataUrl(file);
+  const format = await inferFormat(file);
+  const name = file.name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ");
+
+  await fetch(
+    `/api/products/${encodeURIComponent(draft.product.ng_id)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "Analyzing",
+        format,
+        sell_as: "Canvas & Print",
+        current_step: 0,
+        workflow_progress: 0
+      })
+    }
+  );
+
+  await refreshLibrary();
+
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ngId: draft.product.ng_id,
+      artworkName: name,
+      format,
+      sellAs: "Canvas & Print",
+      sourceType: "Original / User Supplied",
+      rightsStatus: "Licensed for Commercial Use",
+      imageDataUrl: dataUrl,
+      originalFilename: file.name
+    })
+  });
+
+  const generated = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      `${file.name}: ${generated.error || "Analysis failed"}`
+    );
+  }
+
+  const readyResponse = await fetch(
+    `/api/products/${encodeURIComponent(draft.product.ng_id)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "Ready for Review",
+        current_step: 1,
+        workflow_progress: Math.round((1 / 6) * 100),
+        analyzed_at: new Date().toISOString()
+      })
+    }
+  );
+
+  const readyResult = await readyResponse.json();
+
+  if (!readyResponse.ok) {
+    throw new Error(
+      `${file.name}: ${
+        readyResult.error || "Could not update review status."
+      }`
+    );
+  }
+
+  await refreshLibrary();
+
+  const pct = Math.round(((index + 1) / total) * 100);
+
+  $("batchProgressBar").style.width = `${pct}%`;
+  $("batchProgressText").textContent =
+    `${index + 1} of ${total} complete • ${pct}%`;
+}
+   
   $("batchFolderInput").onchange=async e=>{
     if(batchRunning)return;const files=[...e.target.files].filter(f=>f.type.startsWith("image/"));if(!files.length)return;
     batchRunning=true;$("batchProgressCard").hidden=false;openView("dashboardView");$("batchProgressBar").style.width="0%";$("batchProgressText").textContent=`0 of ${files.length} complete`;

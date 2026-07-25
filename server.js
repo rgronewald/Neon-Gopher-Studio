@@ -1,4 +1,5 @@
 const express = require("express");
+console.log("***** USING MODIFIED SERVER.JS *****");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -12,11 +13,14 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-5-mini";
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const ARTWORK_DIR = path.join(DATA_DIR, "artwork");
+const MOCKUPS_DIR = path.join(DATA_DIR, "mockups");
+const SCENES_DIR = path.join(DATA_DIR, "scenes");
 const BACKUP_DIR = path.join(DATA_DIR, "backups");
 const DB_PATH = path.join(DATA_DIR, "neon-gopher-studio.db");
 
-for (const dir of [DATA_DIR, ARTWORK_DIR, BACKUP_DIR]) fs.mkdirSync(dir, { recursive: true });
-
+for (const dir of [DATA_DIR, ARTWORK_DIR, MOCKUPS_DIR, SCENES_DIR, BACKUP_DIR]) {
+  fs.mkdirSync(dir, { recursive: true });
+}
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
   PRAGMA journal_mode = WAL;
@@ -60,10 +64,13 @@ db.exec(`
   );
 `);
 
-app.use(express.json({ limit: "40mb" }));
+app.use(express.json({ limit: "250mb" }));
+app.use(express.urlencoded({ extended: true, limit: "250mb" }));
+
 app.use(express.static(path.join(ROOT, "public")));
 app.use("/artwork", express.static(ARTWORK_DIR));
-
+app.use("/mockups", express.static(MOCKUPS_DIR));
+app.use("/scenes", express.static(SCENES_DIR));
 function cleanJson(text) {
   const trimmed = String(text || "").trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -193,7 +200,26 @@ app.put("/api/products/:ngId", (req, res) => {
     res.status(500).json({ error: error.message || "Save failed." });
   }
 });
+app.delete("/api/products/:ngId", (req, res) => {
+  try {
+    const { ngId } = req.params;
 
+    const result = db
+      .prepare("DELETE FROM products WHERE ng_id = ?")
+      .run(ngId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "Product not found." });
+    }
+
+    res.json({
+      success: true,
+      message: `${ngId} deleted successfully.`,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Delete failed." });
+  }
+});
 app.post("/api/products", (req, res) => {
   try {
     const ngId = reserveNgId();
@@ -206,6 +232,78 @@ app.post("/api/products", (req, res) => {
     res.status(201).json({ product });
   } catch (error) {
     res.status(500).json({ error: error.message || "Could not create product." });
+  }
+});
+app.post("/api/products/:ngId/mockups", (req, res) => {
+  try {
+    const { ngId } = req.params;
+    const { filename, image } = req.body || {};
+
+    if (!filename || !image) {
+      return res.status(400).json({
+        error: "Filename and image are required."
+      });
+    }
+
+    const safeFilename = path.basename(filename);
+    const productFolder = path.join(MOCKUPS_DIR, ngId);
+
+    fs.mkdirSync(productFolder, { recursive: true });
+
+    const match = image.match(/^data:image\/png;base64,(.+)$/);
+
+    if (!match) {
+      return res.status(400).json({
+        error: "The mockup must be a PNG data URL."
+      });
+    }
+
+    const filePath = path.join(productFolder, safeFilename);
+
+    fs.writeFileSync(
+      filePath,
+      Buffer.from(match[1], "base64")
+    );
+
+    res.json({
+      success: true,
+      filename: safeFilename,
+      url: `/mockups/${ngId}/${safeFilename}`
+    });
+  } catch (error) {
+    console.error("Mockup save error:", error);
+
+    res.status(500).json({
+      error: error.message || "Could not save mockup."
+    });
+  }
+});
+app.get("/api/products/:ngId/mockups", (req, res) => {
+  try {
+    const { ngId } = req.params;
+    const productFolder = path.join(MOCKUPS_DIR, ngId);
+
+    if (!fs.existsSync(productFolder)) {
+      return res.json({ files: [] });
+    }
+
+    const files = fs
+      .readdirSync(productFolder)
+      .filter(file => file.toLowerCase().endsWith(".png"))
+      .sort()
+      .map(file => ({
+        filename: file,
+        url: `/mockups/${ngId}/${encodeURIComponent(file)}`
+      }));
+
+    res.json({ files });
+
+  } catch (error) {
+    console.error("Mockup list error:", error);
+
+    res.status(500).json({
+      error: error.message || "Could not load mockups."
+    });
   }
 });
 
@@ -287,7 +385,7 @@ Return exactly this structure:
 const data = cleanJson(response.output_text);
     data.ng_id = ngId;
     const artworkLocation = saveImage(imageDataUrl, ngId, originalFilename);
-    const product = upsertProduct(data, { originalFilename, artworkLocation, format, sellAs, sourceType, rightsStatus, status: "Draft" });
+const product = upsertProduct(data, { originalFilename, artworkLocation, format, sellAs, sourceType, rightsStatus, status: "Ready for Review" });
     res.json({ data: product, model: MODEL });
   } catch (error) {
     console.error(error);
@@ -307,7 +405,7 @@ app.post("/api/backup", (req, res) => {
   }
 });
 const PRODUCT_PROFILES_PATH = path.join(DATA_DIR, "product-profiles.json");
-
+const SCENES_PATH = path.join(DATA_DIR, "scenes.json");
 const DEFAULT_PRODUCT_PROFILES = [
   {
     id: "signature-gallery-canvas",
@@ -335,25 +433,42 @@ const DEFAULT_PRODUCT_PROFILES = [
   }
 ];
 
-function readProductProfiles() {
-  if (!fs.existsSync(PRODUCT_PROFILES_PATH)) {
-    fs.writeFileSync(
-      PRODUCT_PROFILES_PATH,
-      JSON.stringify({ profiles: DEFAULT_PRODUCT_PROFILES }, null, 2)
+function readScenes() {
+  let savedScenes = [];
+
+  if (fs.existsSync(SCENES_PATH)) {
+    const saved = JSON.parse(
+      fs.readFileSync(SCENES_PATH, "utf8")
     );
 
-    return DEFAULT_PRODUCT_PROFILES;
+    savedScenes = Array.isArray(saved.scenes)
+      ? saved.scenes
+      : [];
   }
 
-  const saved = JSON.parse(
-    fs.readFileSync(PRODUCT_PROFILES_PATH, "utf8")
+  const sceneFolders = fs
+    .readdirSync(SCENES_DIR, { withFileTypes: true })
+    .filter(item => item.isDirectory())
+    .map(item => item.name);
+
+  for (const sceneId of sceneFolders) {
+    const alreadyExists = savedScenes.some(
+      scene => scene.id === sceneId
+    );
+
+    if (!alreadyExists) {
+      savedScenes.push({
+        id: sceneId,
+        name: sceneId,
+        backgroundUrl: `/scenes/${sceneId}/background.png`
+      });
+    }
+  }
+
+  return savedScenes.sort((a, b) =>
+    a.id.localeCompare(b.id)
   );
-
-  return Array.isArray(saved.profiles)
-    ? saved.profiles
-    : DEFAULT_PRODUCT_PROFILES;
 }
-
 app.get("/api/product-profiles", (req, res) => {
   try {
     res.json({ profiles: readProductProfiles() });
@@ -363,7 +478,38 @@ app.get("/api/product-profiles", (req, res) => {
     });
   }
 });
+app.post("/api/scenes", (req, res) => {
+  try {
+    const scenes = readScenes();
 
+    const scene = {
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+
+    const index = scenes.findIndex(s => s.id === scene.id);
+
+    if (index >= 0) {
+      scenes[index] = scene;
+    } else {
+      scenes.push(scene);
+    }
+
+    fs.writeFileSync(
+      SCENES_PATH,
+      JSON.stringify({ scenes }, null, 2)
+    );
+
+    res.json({
+      ok: true,
+      scene
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message || "Could not save scene."
+    });
+  }
+});
 app.put("/api/product-profiles", (req, res) => {
   try {
     const profiles = req.body?.profiles;
@@ -383,6 +529,29 @@ app.put("/api/product-profiles", (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: error.message || "Could not save product profiles."
+    });
+  }
+});
+
+app.delete("/api/scenes/:id", (req, res) => {
+  try {
+    const scenes = readScenes();
+    const id = String(req.params.id || "");
+
+    const remaining = scenes.filter(scene => scene.id !== id);
+
+    fs.writeFileSync(
+      SCENES_PATH,
+      JSON.stringify({ scenes: remaining }, null, 2)
+    );
+
+    res.json({
+      ok: true,
+      deleted: id
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message || "Could not delete scene."
     });
   }
 });

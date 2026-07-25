@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Neon Gopher Studio</title><link rel="stylesheet" href="styles.css"/></head>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Neon Gopher Studio</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="css/dashboard.css"/>
+</head>
 <body>
 <header class="topbar"><div><span class="brand">NEON GOPHER</span><strong>Studio</strong><span class="version">v2.0</span></div><div class="top-actions"><button class="nav-btn selected" data-view="dashboardView">Home</button><button class="nav-btn" data-view="productsView">Production</button><button class="nav-btn" data-view="sceneView">Scene Builder</button><button class="nav-btn" data-view="profilesView">Product Profiles</button><button id="newBtn">New Artwork</button><button id="batchImportBtn">Import Folder</button><input id="batchFolderInput" type="file" accept="image/*" webkitdirectory directory multiple hidden/><button id="backupBtn">Backup Database</button><span id="status" class="status">Checking setup…</span></div></header>
 
@@ -25,11 +31,15 @@
     <section id="batchProgressCard" class="panel batch-progress" hidden><div class="panel-head"><div><h2>Batch Analysis</h2><small id="batchProgressText">Preparing…</small></div></div><div class="progress-track"><div id="batchProgressBar"></div></div><div id="batchCurrentFile" class="batch-current"></div></section>
   </main>
 </div>
+
 <div id="productsView" class="app-view" hidden>
 <main class="workspace">
 <aside class="library panel"><div class="panel-head"><div><h2>Production Queue</h2><small id="libraryCount">0 artwork items</small></div></div><input id="searchInput" class="search" placeholder="Search artwork, title, collection…"/><div id="productList" class="product-list"></div></aside>
+
 <section class="artwork panel"><div class="panel-head"><div><h2>Artwork</h2><small id="currentNgId">Automatic NG ID</small></div></div><label class="dropzone" id="dropzone"><input id="imageInput" type="file" accept="image/*" hidden/><img id="preview" alt="Artwork preview"/><div id="dropText"><strong>Choose artwork</strong><span>or drag the image here</span></div></label><label>Working artwork name<input id="artworkName" placeholder="Example: Yellowstone National Park Badge"/></label><div class="choice-block"><span>Format</span><div class="choices" id="formatChoices"><button data-value="Portrait">Portrait</button><button data-value="Landscape">Landscape</button><button data-value="Square">Square</button><button data-value="Panorama">Panorama</button></div></div><div class="choice-block"><span>Sell as</span><div class="choices" id="sellChoices"><button class="selected" data-value="Canvas & Print">Canvas & Print</button><button data-value="Canvas Only">Canvas Only</button><button data-value="Print Only">Print Only</button><button data-value="Trading Card">Trading Card</button></div></div><div class="artwork-profile-box"><strong>Artwork Profile</strong><small>Only enable versions that actually exist.</small><div class="check-grid compact-grid"><label><input type="checkbox" name="artOrientation" value="Landscape" checked/> Landscape</label><label><input type="checkbox" name="artOrientation" value="Portrait"/> Portrait</label><label><input type="checkbox" name="artOrientation" value="Square"/> Square</label><label><input type="checkbox" name="artOrientation" value="Panorama"/> Panorama</label></div><div class="check-grid compact-grid"><label><input type="checkbox" name="artProfile" value="signature-gallery-canvas" checked/> Signature Gallery Canvas</label><label><input type="checkbox" name="artProfile" value="premium-satin-fine-art-print" checked/> Premium Satin Fine Art Print</label></div></div><details><summary>Publishing defaults</summary><label>Source type<input id="sourceType" value="Public Domain"/></label><label>Rights status<input id="rightsStatus" value="Licensed for Commercial Use"/></label></details><button id="generateBtn" class="primary">Regenerate Product</button><div id="error" class="error"></div></section>
+
 <section class="details panel"><div class="panel-head"><div><h2>Product Details</h2><small id="recordStatus">No product selected</small></div><div class="actions"><button id="saveBtn" disabled>Save Changes</button><button id="csvBtn" disabled>CSV</button><button id="jsonBtn" disabled>JSON</button></div></div><div id="emptyState" class="empty">Upload artwork to create a product, or choose a saved product from the library.</div><div id="results" hidden>
+
 <div class="workflow-header">
   <div class="workflow-summary"><strong>Product Progress</strong><span id="workflowPercent">0% complete</span></div>
   <div class="workspace-tabs" role="tablist" aria-label="Product workflow">
@@ -44,34 +54,47 @@
 
 <div id="overviewTab" class="product-tab-panel">
   <div class="section-heading"><h3>Artwork Analysis</h3><small>Review the AI's understanding of the artwork before building the listing.</small></div>
+
   <div class="featured-field">
     <div class="featured-field-head"><label for="product_title">Listing Title</label><button type="button" class="regen-btn" data-regenerate="product_title">↻ Regenerate</button></div>
     <textarea id="product_title" placeholder="AI-generated listing title"></textarea>
     <small>This title is used throughout the listing. Product formats do not belong in the title.</small>
   </div>
+
   <div class="two">
     <div class="field-with-action"><div class="field-action-head"><label for="primary_collection">Primary collection</label><button type="button" class="regen-icon" data-regenerate="primary_collection" title="Regenerate">↻</button></div><textarea id="primary_collection"></textarea></div>
     <div class="field-with-action"><div class="field-action-head"><label for="artwork_type">Original Artwork Type</label><button type="button" class="regen-icon" data-regenerate="artwork_type" title="Regenerate">↻</button></div><textarea id="artwork_type" placeholder="Photograph, watercolor, charcoal drawing…"></textarea></div>
   </div>
+
   <div class="three"><label>Season<textarea id="season"></textarea></label><label>Holiday<textarea id="holiday"></textarea></label><label>Orientation<textarea id="analysis_orientation" readonly></textarea></label></div>
+
   <div class="two">
     <div class="field-with-action"><div class="field-action-head"><label for="colors">Dominant colors</label><button type="button" class="regen-icon" data-regenerate="colors">↻</button></div><textarea id="colors"></textarea></div>
     <div class="field-with-action"><div class="field-action-head"><label for="moods">Mood</label><button type="button" class="regen-icon" data-regenerate="moods">↻</button></div><textarea id="moods"></textarea></div>
     <div class="field-with-action"><div class="field-action-head"><label for="styles">Style</label><button type="button" class="regen-icon" data-regenerate="styles">↻</button></div><textarea id="styles"></textarea></div>
     <div class="field-with-action"><div class="field-action-head"><label for="subjects">Subjects</label><button type="button" class="regen-icon" data-regenerate="subjects">↻</button></div><textarea id="subjects"></textarea></div>
   </div>
+
   <div class="field-with-action wide-field"><div class="field-action-head"><label for="gift_recipients">Ideal Buyers &amp; Gift Recipients</label><button type="button" class="regen-icon" data-regenerate="gift_recipients">↻</button></div><textarea id="gift_recipients" class="tall" placeholder="AI may recommend as many relevant buyers and recipients as fit the artwork."></textarea></div>
+
   <div class="record-footer"><span>AI confidence: <strong id="confidence">—</strong></span><span>Status: <strong id="productStatus">Draft</strong></span></div>
+
   <div class="workflow-actions"><span></span><button type="button" class="primary workflow-next" data-next-step="1">Looks Good ✓ &amp; Next → Listing</button></div>
 </div>
 
 <div id="listingTab" class="product-tab-panel" hidden>
   <div class="section-heading"><h3>Shopify Listing</h3><small>Edit the customer-facing copy and searchable tags.</small></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="short_description">Short description</label><button type="button" class="regen-icon" data-regenerate="short_description">↻</button></div><textarea id="short_description"></textarea></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="long_description">Long description</label><button type="button" class="regen-icon" data-regenerate="long_description">↻</button></div><textarea id="long_description" class="tall listing-copy"></textarea></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="highlights">Highlights</label><button type="button" class="regen-icon" data-regenerate="highlights">↻</button></div><textarea id="highlights"></textarea></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="shopify_tags">Shopify tags</label><button type="button" class="regen-icon" data-regenerate="shopify_tags">↻</button></div><textarea id="shopify_tags" class="tall"></textarea></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="image_alt_text">Image alt text</label><button type="button" class="regen-icon" data-regenerate="image_alt_text">↻</button></div><textarea id="image_alt_text"></textarea></div>
+
   <div class="workflow-actions"><button type="button" data-prev-step="0">← Artwork Analysis</button><button type="button" class="primary workflow-next" data-next-step="2">Looks Good ✓ &amp; Next → Products</button></div>
 </div>
 
@@ -86,14 +109,36 @@
   <div class="section-heading"><h3>Rooms &amp; Mockups</h3><small>Select every room that fits this artwork. There is no limit, and every choice is saved.</small></div>
   <div class="field-with-action"><div class="field-action-head"><label for="rooms">Selected rooms — choose as many as apply</label><button type="button" class="regen-icon" data-regenerate="rooms">↻</button></div><textarea id="rooms" class="tall"></textarea></div>
   <div class="room-actions"><button type="button" id="openSceneBuilderBtn" class="primary">Open Scene Builder</button><span>Your selected rooms stay attached to the product while you build its mockups.</span></div>
+  <div class="mockup-workspace">
+
+  <button
+    type="button"
+    id="workflowGenerateMockupsBtn"
+    class="primary big-action"
+  >
+    Generate All Mockups
+  </button>
+
+  <div id="workflowMockupStatus" class="success"></div>
+
+  <div
+    id="workflowMockupGallery"
+    class="workflow-mockup-gallery"
+  ></div>
+
+</div>
   <div class="workflow-actions"><button type="button" data-prev-step="2">← Products</button><button type="button" class="primary workflow-next" data-next-step="4">Looks Good ✓ &amp; Next → SEO</button></div>
 </div>
 
 <div id="seoTab" class="product-tab-panel" hidden>
   <div class="section-heading"><h3>Search Engine Listing</h3><small>Prepare the title, description, and Shopify URL.</small></div>
+
   <div class="two"><div class="field-with-action"><div class="field-action-head"><label for="seo_title">SEO title</label><button type="button" class="regen-icon" data-regenerate="seo_title">↻</button></div><textarea id="seo_title"></textarea><small class="field-counter" id="seoTitleCount">0 characters</small></div><label>URL handle<textarea id="url_handle"></textarea></label></div>
+
   <div class="field-with-action"><div class="field-action-head"><label for="meta_description">Meta description</label><button type="button" class="regen-icon" data-regenerate="meta_description">↻</button></div><textarea id="meta_description"></textarea><small class="field-counter" id="metaDescriptionCount">0 characters</small></div>
+
   <div class="search-preview"><small>Search preview</small><strong id="seoPreviewTitle">Product title</strong><span id="seoPreviewUrl">your-store.com/products/product-handle</span><p id="seoPreviewDescription">Meta description preview</p></div>
+
   <div class="workflow-actions"><button type="button" data-prev-step="3">← Mockups</button><button type="button" class="primary workflow-next" data-next-step="5">Looks Good ✓ &amp; Next → Export</button></div>
 </div>
 
@@ -113,11 +158,123 @@
     <div class="workflow-actions"><button type="button" id="cancelRegen">Cancel</button><button type="button" class="primary" id="useRegenOption" disabled>Use Selected</button></div>
   </div>
 </div>
+
 </div></section>
-</main></div>
-<div id="sceneView" class="app-view" hidden><main class="scene-workspace"><section class="panel scene-form"><div class="panel-head"><div><h2>Scene Builder</h2><small>Create reusable room templates</small></div><button id="newSceneBtn">Clear</button></div><label>Scene ID<input id="sceneId" value="HOME-LR-001" placeholder="HOME-LR-001"/></label><label>Scene name<input id="sceneName" value="Modern White Living Room 01"/></label><div class="two"><label>Category<input id="sceneCategory" value="Home"/></label><label>Subcategory<input id="sceneSubcategory" value="Living Room"/></label><label>Style<input id="sceneStyle" value="Modern"/></label><label>Orientation<select id="sceneOrientation"><option>Landscape</option><option>Portrait</option><option>Square</option><option>Panorama</option></select></label></div><div class="choice-block"><span>Supported products</span><div class="check-grid"><label><input type="checkbox" name="sceneProduct" value="Canvas" checked/> Canvas</label><label><input type="checkbox" name="sceneProduct" value="Print" checked/> Print</label><label><input type="checkbox" name="sceneProduct" value="Poster" checked/> Poster</label><label><input type="checkbox" name="sceneProduct" value="Framed Print" checked/> Framed Print</label><label><input type="checkbox" name="sceneProduct" value="Metal Print"/> Metal Print</label><label><input type="checkbox" name="sceneProduct" value="Acrylic Print"/> Acrylic Print</label></div></div><label class="scene-upload">Room image<input id="sceneImageInput" type="file" accept="image/*"/></label>
-<div class="placement-editor"><div class="panel-head compact"><div><h2>Placement Objects</h2><small id="placementCount">0 placements</small></div><button id="addPlacementBtn" type="button">+ Add</button></div><div id="placementList" class="placement-list"></div><label>Placement name<input id="placementName" value="Landscape Display"/></label><div class="two"><label>Orientation slot<select id="placementType"><option>Landscape</option><option>Portrait</option><option>Square</option><option>Panorama</option></select></label><label>Aspect ratio<select id="placementRatio"><option value="3:2">Landscape 3:2</option><option value="2:3">Portrait 2:3</option><option value="1:1">Square 1:1</option><option value="3:1">Panorama 3:1</option><option value="2:1">Panorama 2:1</option><option value="free">Custom</option></select></label></div><label>Display guidance<input id="placementDisplaySize" value="Largest practical display for this wall"/></label><button id="deletePlacementBtn" type="button" class="danger-btn">Delete Selected Placement</button></div>
-<p class="instruction">Add a placement, then draw its rectangle on the room image. Use no more than one Landscape, Portrait, Square, and Panorama slot. Size represents the largest practical display, not the customer's ordered size.</p><button id="saveSceneBtn" class="primary">Save Scene</button><hr class="section-rule"/><div class="panel-head compact"><div><h2>Mockup Artwork</h2><small>Preview artwork inside this scene</small></div></div><label class="scene-upload">Artwork image<input id="mockupArtworkInput" type="file" accept="image/*"/></label><div class="mockup-artwork-preview"><img id="mockupArtworkThumb" alt="Selected artwork"/><span id="mockupArtworkEmpty">No artwork selected</span></div><label>Product rendering<select id="mockupProduct"><option value="signature-gallery-canvas">Signature Gallery Canvas</option><option value="premium-satin-fine-art-print">Premium Satin Fine Art Print (1/4&quot; white border)</option></select></label><label>Fit<select id="mockupFit"><option value="contain">Contain</option><option value="cover">Fill</option><option value="stretch">Stretch</option></select></label><button id="generateMockupBtn" class="primary">Generate Selected Product Mockup</button><button id="generateBothBtn">Generate Canvas + Satin</button><button id="downloadMockupBtn" disabled>Download Selected PNG</button><div class="two"><button id="downloadCanvasBtn" disabled>Download Canvas PNG</button><button id="downloadSatinBtn" disabled>Download Satin PNG</button></div><div id="sceneError" class="error"></div><div id="sceneStatus" class="success"></div></section>
-<section class="panel scene-canvas-panel"><div class="panel-head"><div><h2>Placement Editor</h2><small id="areaReadout">No area drawn</small></div></div><div id="sceneStage" class="scene-stage"><img id="sceneBackground" alt="Room background"/><div id="artworkArea" class="artwork-area" hidden tabindex="0"><img id="placedArtwork" alt="Artwork preview"/><span>ARTWORK</span><i class="resize-handle nw" data-corner="nw"></i><i class="resize-handle ne" data-corner="ne"></i><i class="resize-handle sw" data-corner="sw"></i><i class="resize-handle se" data-corner="se"></i></div><div id="scenePlaceholder" class="empty">Choose an empty-room image to begin.</div></div><div class="scene-help">Select a placement from the list, then move or resize its green box. Draw elsewhere to replace the selected placement. Arrow keys nudge; Shift + arrow moves farther.</div></section>
-<aside class="panel scene-library"><div class="panel-head"><div><h2>Scene Library</h2><small id="sceneCount">0 scenes</small></div></div><div id="sceneList" class="scene-list"></div></aside></main></div>
-<div id="profilesView" class="app-view" hidden><main class="profiles-workspace"><section class="panel"><div class="panel-head"><div><h2>Product Profiles</h2><small>Products determine how artwork is rendered; scenes only determine where it appears.</small></div><button id="saveProfilesBtn">Save Profiles</button></div><div id="profileCards" class="profile-cards"></div><div id="profilesStatus" class="success"></div><div id="profilesError" class="error"></div></section></main></div><section class="activity"><div class="activity-head"><strong>Activity Log</strong><button id="clearLogBtn">Clear</button></div><div id="activityLog"></div></section><script src="app.js"></script></body></html>
+</main>
+</div>
+
+<div id="sceneView" class="app-view" hidden>
+<main class="scene-workspace">
+
+<section class="panel scene-form">
+<div class="panel-head"><div><h2>Scene Builder</h2><small>Create reusable room templates</small></div><button id="newSceneBtn">Clear</button></div>
+
+<label>Scene ID<input id="sceneId" value="HOME-LR-001" placeholder="HOME-LR-001"/></label>
+<label>Scene name<input id="sceneName" value="Modern White Living Room 01"/></label>
+
+<div class="two">
+<label>Category<input id="sceneCategory" value="Home"/></label>
+<label>Subcategory<input id="sceneSubcategory" value="Living Room"/></label>
+<label>Style<input id="sceneStyle" value="Modern"/></label>
+<label>Orientation<select id="sceneOrientation"><option>Landscape</option><option>Portrait</option><option>Square</option><option>Panorama</option></select></label>
+</div>
+
+<div class="choice-block"><span>Supported products</span><div class="check-grid">
+<label><input type="checkbox" name="sceneProduct" value="Canvas" checked/> Canvas</label>
+<label><input type="checkbox" name="sceneProduct" value="Print" checked/> Print</label>
+<label><input type="checkbox" name="sceneProduct" value="Poster" checked/> Poster</label>
+<label><input type="checkbox" name="sceneProduct" value="Framed Print" checked/> Framed Print</label>
+<label><input type="checkbox" name="sceneProduct" value="Metal Print"/> Metal Print</label>
+<label><input type="checkbox" name="sceneProduct" value="Acrylic Print"/> Acrylic Print</label>
+</div></div>
+
+<label class="scene-upload">Room image<input id="sceneImageInput" type="file" accept="image/*"/></label>
+
+<div class="placement-editor">
+<div class="panel-head compact"><div><h2>Placement Objects</h2><small id="placementCount">0 placements</small></div><button id="addPlacementBtn" type="button">+ Add</button></div>
+
+<div id="placementList" class="placement-list"></div>
+
+<label>Placement name<input id="placementName" value="Landscape Display"/></label>
+
+<div class="two">
+<label>Orientation slot<select id="placementType"><option>Landscape</option><option>Portrait</option><option>Square</option><option>Panorama</option></select></label>
+<label>Aspect ratio<select id="placementRatio"><option value="3:2">Landscape 3:2</option><option value="2:3">Portrait 2:3</option><option value="1:1">Square 1:1</option><option value="3:1">Panorama 3:1</option><option value="2:1">Panorama 2:1</option><option value="free">Custom</option></select></label>
+</div>
+
+<label>Display guidance<input id="placementDisplaySize" value="Largest practical display for this wall"/></label>
+<button id="deletePlacementBtn" type="button" class="danger-btn">Delete Selected Placement</button>
+</div>
+
+<p class="instruction">Add a placement, then draw its rectangle on the room image. Use no more than one Landscape, Portrait, Square, and Panorama slot. Size represents the largest practical display, not the customer's ordered size.</p>
+
+<button id="saveSceneBtn" class="primary">Save Scene</button>
+
+<hr class="section-rule"/>
+
+<div class="panel-head compact"><div><h2>Mockup Artwork</h2><small>Preview artwork inside this scene</small></div></div>
+
+<label class="scene-upload">Artwork image<input id="mockupArtworkInput" type="file" accept="image/*"/></label>
+
+<div class="mockup-artwork-preview"><img id="mockupArtworkThumb" alt="Selected artwork"/><span id="mockupArtworkEmpty">No artwork selected</span></div>
+
+<label>Product rendering<select id="mockupProduct"><option value="signature-gallery-canvas">Signature Gallery Canvas</option><option value="premium-satin-fine-art-print">Premium Satin Fine Art Print (1/4&quot; white border)</option></select></label>
+
+<label>Fit<select id="mockupFit"><option value="contain">Contain</option><option value="cover">Fill</option><option value="stretch">Stretch</option></select></label>
+
+<button id="generateMockupBtn" class="primary">Generate Selected Product Mockup</button>
+<button id="generateBothBtn">Generate Canvas + Satin</button>
+<button id="downloadMockupBtn" disabled>Download Selected PNG</button>
+
+<div class="two"><button id="downloadCanvasBtn" disabled>Download Canvas PNG</button><button id="downloadSatinBtn" disabled>Download Satin PNG</button></div>
+
+<div id="sceneError" class="error"></div>
+<div id="sceneStatus" class="success"></div>
+</section>
+
+<section class="panel scene-canvas-panel">
+<div class="panel-head"><div><h2>Placement Editor</h2><small id="areaReadout">No area drawn</small></div></div>
+
+<div id="sceneStage" class="scene-stage">
+<img id="sceneBackground" alt="Room background"/>
+<div id="artworkArea" class="artwork-area" hidden tabindex="0">
+<img id="placedArtwork" alt="Artwork preview"/>
+<span>ARTWORK</span>
+<i class="resize-handle nw" data-corner="nw"></i>
+<i class="resize-handle ne" data-corner="ne"></i>
+<i class="resize-handle sw" data-corner="sw"></i>
+<i class="resize-handle se" data-corner="se"></i>
+</div>
+<div id="scenePlaceholder" class="empty">Choose an empty-room image to begin.</div>
+</div>
+
+<div class="scene-help">Select a placement from the list, then move or resize its green box. Draw elsewhere to replace the selected placement. Arrow keys nudge; Shift + arrow moves farther.</div>
+</section>
+
+<aside class="panel scene-library">
+<div class="panel-head"><div><h2>Scene Library</h2><small id="sceneCount">0 scenes</small></div></div>
+<div id="sceneList" class="scene-list"></div>
+</aside>
+
+</main>
+</div>
+
+<div id="profilesView" class="app-view" hidden>
+<main class="profiles-workspace">
+<section class="panel">
+<div class="panel-head"><div><h2>Product Profiles</h2><small>Products determine how artwork is rendered; scenes only determine where it appears.</small></div><button id="saveProfilesBtn">Save Profiles</button></div>
+<div id="profileCards" class="profile-cards"></div>
+<div id="profilesStatus" class="success"></div>
+<div id="profilesError" class="error"></div>
+</section>
+</main>
+</div>
+
+<section class="activity">
+<div class="activity-head"><strong>Activity Log</strong><button id="clearLogBtn">Clear</button></div>
+<div id="activityLog"></div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+/* Neon Gopher Studio — Dashboard Queue v3 */
+
+.dashboard-queue-item{
+  display:grid;
+  grid-template-columns:60px minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+  width:100%;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#0b1620;
+  cursor:pointer;
+  transition:
+    transform .15s ease,
+    border-color .15s ease,
+    box-shadow .15s ease;
+}
+
+.dashboard-queue-item:hover{
+  transform:translateY(-1px);
+  border-color:#48657a;
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+
+.dashboard-queue-item .queue-thumb{
+  width:60px;
+  height:60px;
+  border-radius:8px;
+  overflow:hidden;
+  background:#111827;
+}
+
+.dashboard-queue-item .queue-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.dashboard-queue-item .queue-card-content{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width:0;
+}
+
+.dashboard-queue-item .queue-card-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.dashboard-queue-item .queue-copy{
+  min-width:0;
+}
+
+.dashboard-queue-item .queue-copy strong,
+.dashboard-queue-item .queue-copy span{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.dashboard-queue-item .queue-copy span{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.dashboard-queue-item .queue-progress-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.dashboard-queue-item .queue-progress-track{
+  flex:1;
+  height:8px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#111827;
+}
+
+.dashboard-queue-item .queue-progress-fill{
+  height:100%;
+  min-width:0;
+  background:#4b5563;
+  transition:width .25s ease;
+}
+
+.dashboard-queue-item .queue-progress-fill.ready{
+  background:#67ff9a;
+}
+
+.dashboard-queue-item .queue-progress-fill.attention{
+  background:#ffd166;
+}
+
+.dashboard-queue-item .queue-progress-fill.mockups{
+  background:#61b6ff;
+}
+
+.dashboard-queue-item .queue-progress-fill.export-ready{
+  background:#d6a5ff;
+}
+
+.dashboard-queue-item .queue-progress-fill.finished{
+  background:#6b7280;
+}
+
+.dashboard-queue-item .queue-progress-row small,
+.dashboard-queue-item .queue-card-footer > small{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.dashboard-queue-item .queue-card-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.dashboard-queue-item .queue-card-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.dashboard-queue-item .continue-review-btn{
+  padding:7px 12px;
+  border:1px solid #2f6b48;
+  border-radius:7px;
+  background:#10261b;
+  color:#67ff9a;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.dashboard-queue-item .continue-review-btn:hover{
+  background:#174026;
+}
+
+.dashboard-queue-item .delete-product-btn{
+  position:static;
+  width:30px;
+  height:30px;
+  margin:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#162433;
+  color:var(--muted);
+  opacity:.75;
+  cursor:pointer;
+}
+
+.dashboard-queue-item .delete-product-btn:hover{
+  color:#ff6b6b;
+  border-color:#8b3434;
+  background:#2a1115;
+  opacity:1;
+}
+#workflowMockupGallery img {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+}
